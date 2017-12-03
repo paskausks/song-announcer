@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link href="https://fonts.googleapis.com/css?family=Play" rel="stylesheet">
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				font-family: "Play", sans-serif;
+                overflow: hidden;
+                box-sizing: border-box;
+			}
+            ::-webkit-scrollbar {
+              visibility: hidden;
+            }
+            body {
+            	text-shadow: 1px 1px 2px #000;
+            }
+            .container {
+            	color: #f8f8f8;
+            	display: block;
+            	height: 200px;
+            	padding-top: 10px;
+            	padding-bottom: 10px;
+            	margin-left: -200px; /* Negative margin so we can animate the album art sliding in*/
+            	padding-left: 220px; /* Leave space for album art and some little extra padding */
+            	background-repeat: no-repeat;
+            	background-position: left center;
+            	background-size: contain;
+            	transition-property: margin;
+            	transition-duration: .5s;
+            	transition-timing-function: ease-in;
+            }
+            .container.in {
+            	margin-left: 0px;
+            }
+            .song {
+            	font-size: 3em;
+            	margin-bottom: 60px; /* This is font dependent, of course */
+            }
+            .song.transforming {
+            	transform: skewX(1deg);
+            }
+            .meta.transforming {
+            	transform: skewY(1deg);
+            }
+            .album {
+            	font-style: italic;
+            }
+            .artist.transforming {
+            	transform: rotate(-1deg);
+            }
+            .text {
+            	opacity: 0;
+            	transition-property: opacity;
+            	transition-duration: .5s;
+            	transition-timing-function: ease-out;
+            }
+            .in {
+            	opacity: 1;
+            }
+            .artist,
+            .meta {
+                font-size: 1.5em;
+            }
+
+            .translate {
+            	transition-property: transform;
+            	transition-duration: 10s;
+            	transition-timing-function: linear;
+            }
+		</style>
+	</head>
+	<body>
+	<div class="container">
+		<div class="text artist"></div>
+		<div class="text song"></div>
+		<div class="text meta">from <span class="album"></span></div>
+	</div>
+    <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+	<script>
+		(function ($){
+			'use strict';
+
+			/* START SETTINGS */
+			var songFileUrl = "/current-song";
+			var pollRate = 10000  // How often to check for a song change in ms.
+			/* END SETTINGS */
+
+			var prevSong = '';
+			var opacityAnimDuration;
+			var animating = false;
+
+			// Key HTML elements.
+			var $container = $('.container');
+			var $artist = $('.artist');
+			var $song = $('.song');
+			var $meta = $('.meta');
+			var $album = $('.album');
+			var $texts = $('.text');
+
+			// Classes to trigger animations.
+			var opacityClass = 'text';
+			var opacityAnimClass = 'in';
+			var transformClass = 'translate';
+			var transformAnimClass = 'transforming';
+
+			function getAnimDuration ($el) {
+				// Returns an element's CSS transition duration in milis.
+				return parseFloat($el.css('transition-duration'), 10) * 1000;
+			}
+
+			function resetCb() {
+				$container.removeClass('in');
+				window.setTimeout(function () {
+					// Reset text look
+					$texts.removeClass(transformAnimClass);
+					animating = false;
+				}, getAnimDuration($container));
+			}
+
+			function animOutCb () {
+				// Called when animation has ended. Begin animating out.
+				$texts.each(function (i) {
+					var $this = $(this);
+					var animDelay = opacityAnimDuration / 2 * (i + 1);
+					window.setTimeout(function () {
+						// Stop transform animation and start fading out text elements
+						$this.removeClass(transformClass).addClass(opacityClass).removeClass(opacityAnimClass);
+					}, animDelay);
+					if (i === $texts.length - 1) {
+						// On last text animation end start resetting everything to inital state.
+						window.setTimeout(resetCb, animDelay + opacityAnimDuration);
+					}
+				});
+			}
+
+
+			$container.on('songDataUpdated', null, function () {
+				// Event triggered after data from server loaded and
+				// presumably the album art image has been loaded.
+
+				// Prevents song name being changed while a popup is already in progress.
+				animating = true;
+
+				$container.addClass('in');
+				window.setTimeout(function () {
+					$container.trigger('containerShown');
+				}, getAnimDuration($container));
+			});
+
+			$container.on('containerShown', null, function () {
+				// Event triggered after container has faded in.
+				$texts.each(function (i) {
+					// Trigger animation on texts one by one.
+					// The next texts animates after the previous is half-way done.
+					var $this = $(this);
+					opacityAnimDuration = getAnimDuration($this);
+					var animDuration = opacityAnimDuration / 2 * (i + 1);
+					if (i === $texts.length - 1) {
+						// On last text animation setup call of animation end callback.
+						window.setTimeout(animOutCb, 10000 + animDuration);
+					}
+					window.setTimeout(function () {
+						$this.addClass('in').trigger('fadingIn');
+					}, animDuration);
+				});
+			});
+
+			$texts.on('fadingIn', null, function () {
+				// Triggered when text starts animation. set up translation.
+				// Remove opacity animation property and add 'translate' instead as soon as fading in is complete.
+				var $this = $(this);
+				var opacityAnimDuration = getAnimDuration($this);
+				window.setTimeout(function () {
+					$this.removeClass(opacityClass).addClass(transformClass).addClass(transformAnimClass);
+				}, opacityAnimDuration);
+			});
+
+
+
+			function spotifyCb(response) {
+				// Triggered on song change. If there was a result, fill in values
+				// else just display the container.
+				var song;
+				if (response.tracks.items.length === 0) {
+					// Empty search result.
+					return;
+				}
+
+				// We take the most relevant result.
+				song = response.tracks.items[0];
+
+				$container.css('background-image', 'url("' + song.album.images[1].url + '")'); // 300x300 thumbnail
+				$artist.text(song.artists.map(function (artist) {
+					return artist.name
+				}).join(', '));
+				$song.text(song.name);
+				$album.text(song.album.name);
+
+				// Give the image 100ms to load from the server.
+				window.setTimeout(function () {
+					$container.trigger('songDataUpdated');
+				}, 100);
+
+			}
+
+            function isSongChanged(response) {
+
+                if (prevSong === response || response === 'Spotify' || animating) {
+                	// Nothing changed, nothing to do.
+                	// Ignore "Spotify" window title.
+                	// Don't interrupt animation in progress.
+                	return;
+                }
+
+                prevSong = response;
+
+                // Look for the song on Spotify to get all the necessary metadata
+				$.ajax({
+					dataType: 'json',
+					url: 'https://api.spotify.com/v1/search',
+                    headers: {
+                        Authorization: 'Bearer {{token}}'
+                    },
+					data: {
+						// Remove special characters and multiple spaces from search query
+						q: response.replace(/\-|\/|:/g, " ").replace(/\s+/g, " "),
+						type: 'track',
+					},
+					success: spotifyCb,
+				});
+
+            }
+
+			window.setInterval(function () {
+                $.get(songFileUrl, {}, isSongChanged, "text");
+            }, pollRate);
+
+            $(function () {
+				$.get(songFileUrl, {}, isSongChanged, "text");
+                setTimeout(function () {
+                    window.location.reload()
+                }, {{refresh}});
+			})// First run, fetch song, and set refresh timer.
+		})(jQuery);
+
+
+	</script>
+	</body>
+</html>

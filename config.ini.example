@@ -1,0 +1,10 @@
+[spotify]
+; Spotify application client ID and secret
+; for authenticating to the Spotify Web API.
+; To get these, register an application at https://developer.spotify.com/
+clientid = YourApplicationClientIdHere
+clientsecret = YourApplicationClientSecretHere
+
+; Location of the txt file containing the currently playing song.
+; Preferable, in the format of "Artist name - song name"
+songfile = C:\SMG\current_song.txt
