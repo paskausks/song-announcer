@@ -149,7 +149,6 @@ class AlertServer(object):
         Cleanly shut down all processes
         """
         self._server.shutdown()
-        self._spotify_auth.connection.close()
         self._token_refresher.stop()
 
 
@@ -168,7 +167,7 @@ class SpotifyTokenRefreshThread(threading.Thread):
 
     def run(self):
         while not self._stop_event.is_set():
-            self._stop_event.wait(self._cfg.token_lifetime - 5)
+            self._stop_event.wait(self._cfg.token_lifetime - 60)
             if not self._shut_down:
                 # Prevent refresh on shutdown
                 logger('Refreshing Spotify OAuth token.')

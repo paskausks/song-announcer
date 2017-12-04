@@ -8,4 +8,4 @@ def logger(msg, err=False):
     """
     now = datetime.datetime.now()
     stream = sys.stderr if err else sys.stdout
-    stream.write('[%s] %s\n' % (now.strftime('%H:%m'), msg))
+    stream.write('[%s] %s\n' % (now.strftime('%H:%M'), msg))

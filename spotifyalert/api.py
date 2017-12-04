@@ -22,7 +22,6 @@ class SpotifyAuth(object):
     """
     def __init__(self, cfg):
         super(SpotifyAuth, self).__init__()
-        self.connection = HTTPSConnection('accounts.spotify.com', timeout=5)
         self._cfg = cfg
         self.client_id = self._cfg.get('clientid')
         self.client_secret = self._cfg.get('clientsecret')
@@ -43,9 +42,10 @@ class SpotifyAuth(object):
         Get token from Spotify Accounts Service and update the configuration
         """
         params = urllib.urlencode({'grant_type': 'client_credentials'})
-        self.connection.request('POST', '/api/token', params, self._get_http_headers())
+        conn = HTTPSConnection('accounts.spotify.com', timeout=5)
+        conn.request('POST', '/api/token', params, self._get_http_headers())
 
-        json_response = json.loads(self.connection.getresponse().read())
+        json_response = json.loads(conn.getresponse().read())
 
         if 'error' in json_response:
             raise SpotifyAuthException(
@@ -56,3 +56,5 @@ class SpotifyAuth(object):
         self._cfg.token = json_response['access_token']
         self._cfg.token_lifetime = json_response['expires_in']
         self._cfg.token_last_refreshed = time()
+
+        conn.close()

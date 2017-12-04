@@ -1,6 +1,6 @@
 # coding=utf-8
 import ConfigParser
-from datetime import datetime
+from time import time
 from os import path
 
 __author__ = 'pundurs'
@@ -132,9 +132,7 @@ class Config(object):
         """
         Return time left in seconds until token expires
         """
-        return int(
-            self.token_lifetime - (datetime.now() - datetime.fromtimestamp(self.token_last_refreshed)).total_seconds()
-        )
+        return int(self.token_lifetime + self.token_last_refreshed - time())
 
 
 
