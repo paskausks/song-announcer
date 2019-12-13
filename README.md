@@ -1,5 +1,7 @@
 # Stream music announcer
 
+**This project is abandoned in favor of [song-announcer2](https://github.com/paskausks/song-announcer2)!**
+
 An animated HTML widget for displaying the currently playing song targeted towards streamers, like yours truly.
 Shows song title, artist name, album name and album art, provided by the Spotify Web API.
 
